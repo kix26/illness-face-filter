@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Directions Challenge!</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .main-title {
+            margin: 0 0 12px 0;
+            font-size: 2.2em;
+            color: #1a202c;
+            text-align: center;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        /* Mode Selection Screen */
+        .selection-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .cards-wrapper {
+            display: flex;
+            gap: 30px;
+            width: 100%;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .role-card {
+            flex: 1;
+            max-width: 320px;
+            background: #f8fafc;
+            border: 3px solid #cbd5e0;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .role-card:hover {
+            transform: translateY(-5px);
+            border-color: #3182ce;
+            box-shadow: 0 8px 16px rgba(49, 130, 206, 0.2);
+            background: #ebf8ff;
+        }
+
+        .role-icon {
+            font-size: 4em;
+            margin-bottom: 12px;
+        }
+
+        .role-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .role-desc {
+            font-size: 1em;
+            color: #718096;
+            line-height: 1.4;
+        }
+
+        /* Container Layout for Map Workspaces */
+        .container {
+            max-width: 1150px;
+            width: 100%;
+            background: white;
+            padding: 24px;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            display: none; /* Controlled via JavaScript */
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .back-btn {
+            background: #e2e8f0;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            color: #4a5568;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .back-btn:hover { background: #cbd5e0; }
+
+        /* Main Workspace Grid: Default (Yuma Mode) */
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 160px;
+            gap: 16px;
+            align-items: center;
+        }
+
+        /* Tourist Mode View Specific Layout (Full width canvas, +20% max-height) */
+        .workspace.tourist-mode {
+            grid-template-columns: 1fr;
+        }
+        .workspace.tourist-mode canvas {
+            max-height: 72vh; /* Enlarge map by 20% (from 60vh to 72vh) */
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+        canvas {
+            border: 4px solid #cbd5e0;
+            border-radius: 10px;
+            cursor: pointer;
+            background-color: #f7fafc;
+            width: 100%;
+            height: auto;
+            max-height: 60vh;
+            object-fit: contain;
+            transition: max-height 0.2s ease;
+        }
+
+        /* Sidebar Level Controls */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #f8fafc;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+        }
+        .sidebar-title {
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+        .level-btn {
+            background-color: #edf2f7;
+            border: 2px solid #cbd5e0;
+            color: #4a5568;
+            padding: 14px 8px;
+            font-size: 1.05em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .level-btn:hover {
+            background-color: #e2e8f0;
+        }
+        .level-btn.active {
+            background-color: #2b6cb0;
+            border-color: #2c5282;
+            color: white;
+            box-shadow: 0 2px 6px rgba(43, 108, 176, 0.3);
+        }
+        .ticket-btn, .ticket-nav-btn {
+            border: 0;
+            border-radius: 8px;
+            padding: 12px 10px;
+            font-size: 0.98em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.15s ease;
+        }
+        .ticket-btn { background: #f6ad55; color: #4a2b05; }
+        .ticket-btn:hover:not(:disabled) { background: #ed8936; transform: translateY(-2px); }
+        .ticket-btn:disabled { background: #cbd5e0; color: #718096; cursor: not-allowed; opacity: 0.8; transform: none; }
+        .ticket-nav-btn { background: #2b6cb0; color: white; margin: 4px; }
+        .ticket-nav-btn:hover { background: #2c5282; }
+        .ticket-speaker { color: #fbd38d; font-weight: 800; }
+        .ticket-progress { display: block; font-size: 0.65em; color: #cbd5e0; margin-top: 8px; }
+        .ticket-controls { display: none; text-align: center; margin-top: -6px; }
+        .ticket-controls.visible { display: block; }
+
+        /* Full-Width Dialogue Panel */
+        .directions-panel {
+            background: #2d3748;
+            color: #fff;
+            padding: 18px;
+            border-radius: 10px;
+            font-size: 1.5em;
+            font-weight: 500;
+            text-align: center;
+            min-height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+            border-left: 7px solid #48bb78;
+            line-height: 1.4;
+        }
+        .highlight {
+            color: #63b3ed;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        .placeholder {
+            color: #a0aec0;
+            font-style: italic;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Landing Screen / Role Selection -->
+<div class="selection-screen" id="selectionScreen">
+    <h1 class="main-title" style="margin: 0;">Choose Your Role!</h1>
+    <p style="color: #4a5568; font-size: 1.1em; margin: 0;">Select a card to begin the challenge:</p>
+    
+    <div class="cards-wrapper">
+        <div class="role-card" onclick="startApp('tourist')">
+            <div class="role-icon">🧳</div>
+            <div class="role-title">The Tourist</div>
+            <div class="role-desc">インタラクティブな地図インターフェース。地下鉄の路線に沿ってカーソルをドラッグしてください。</div>
+        </div>
+
+        <div class="role-card" onclick="startApp('yuma')">
+            <div class="role-icon">🗣️</div>
+            <div class="role-title">Yuma</div>
+            <div class="role-desc">動的に生成されるルート案内と空のカードを備えた、フルマップ・インターフェース。</div>
+        </div>
+    </div>
+</div>
+
+<!-- Main App Container -->
+<div class="container" id="mainApp">
+    <div class="nav-header">
+        <button class="back-btn" onclick="returnToSelection()">← メイン画面に戻る。</button>
+        <span id="roleLabel" style="font-weight: bold; color: #4a5568; font-size: 1.1em;"></span>
+    </div>
+
+    <!-- Main Workspace Grid -->
+    <div class="workspace" id="workspace">
+        <!-- Canvas (Center) -->
+        <div class="canvas-wrapper">
+            <canvas id="mapCanvas" width="900" height="400"></canvas>
+        </div>
+
+        <!-- Levels Sidebar (Right Side) -->
+        <div class="sidebar" id="sidebar">
+            <span class="sidebar-title">Level</span>
+            <button class="level-btn active" onclick="setLevel(1, this)">Level 1<br><small style="font-weight:normal; font-size:0.8em;">Full Text</small></button>
+            <button class="level-btn" onclick="setLevel(2, this)">Level 2<br><small style="font-weight:normal; font-size:0.8em;">Partial Blanks</small></button>
+            <button class="level-btn" onclick="setLevel(3, this)">Level 3<br><small style="font-weight:normal; font-size:0.8em;">Full Blanks</small></button>
+            <button class="ticket-btn" id="ticketHelpButton" onclick="startTicketHelp()" disabled title="Reach your destination first">🔒 Ticket Help (reach goal first)</button>
+        </div>
+    </div>
+
+    <!-- Bottom Full-Width Dialogue Panel (Only for Yuma Mode) -->
+    <div class="directions-panel" id="directionsPanel">
+        <div class="placeholder">地図上の絵カードをクリックし、赤い点を地下鉄の路線に沿ってドラッグしてください。</div>
+    </div>
+    <div class="ticket-controls" id="ticketControls">
+        <button class="ticket-nav-btn" id="ticketBackButton" onclick="previousTicketLine()">← Previous</button>
+        <button class="ticket-nav-btn" id="ticketNextButton" onclick="nextTicketLine()">Next line →</button>
+        <button class="ticket-nav-btn" onclick="exitTicketHelp()">↩ Back to Directions</button>
+    </div>
+</div>
+
+<script>
+    const selectionScreen = document.getElementById('selectionScreen');
+    const mainApp = document.getElementById('mainApp');
+    const roleLabel = document.getElementById('roleLabel');
+    const workspace = document.getElementById('workspace');
+    const sidebar = document.getElementById('sidebar');
+    const directionsPanel = document.getElementById('directionsPanel');
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let currentMode = 'yuma';
+    let ticketHelpMode = false;
+    let ticketLineIndex = 0;
+    let goalReached = false;
+
+    // Only Yuma's ticket-help prompt is shown, as requested.
+    const ticketDialogue = [
+        { speaker: 'Yuma', text: 'Do you know how to buy a subway ticket?' }
+    ];
+
+    function updateTicketButtonState() {
+        const button = document.getElementById('ticketHelpButton');
+        button.disabled = !goalReached;
+        button.textContent = goalReached ? '🎫 Ticket Help' : '🔒 Ticket Help (reach goal first)';
+        button.title = goalReached ? 'Open Yuma’s ticket-help line' : 'Reach your destination first';
+    }
+
+    function checkGoalReached(x, y) {
+        if (!currentRoute) return false;
+        if (currentRoute === 'zoo') return Math.hypot(x - nodes.maruyama.x, y - nodes.maruyama.y) < 15;
+        if (currentRoute === 'market') return Math.hypot(x - nodes.nijuyonken.x, y - nodes.nijuyonken.y) < 25;
+        if (currentRoute === 'clock') return Math.hypot(x - nodes.odori.x, y - nodes.odori.y) < 15;
+        if (currentRoute === 'park') return Math.hypot(x - nodes.kanjo.x, y - nodes.kanjo.y) < 15;
+        return false;
+    }
+
+    function startApp(mode) {
+        currentMode = mode;
+        selectionScreen.style.display = 'none';
+        mainApp.style.display = 'flex';
+
+        ticketHelpMode = false;
+        goalReached = false;
+        updateTicketButtonState();
+        document.getElementById('ticketControls').classList.remove('visible');
+        if (mode === 'tourist') {
+            roleLabel.innerText = "Role: The Tourist";
+            directionsPanel.style.display = 'none';
+            sidebar.style.display = 'none'; // Hide Level Buttons
+            workspace.classList.add('tourist-mode'); // Enlarge map by 20%
+        } else {
+            roleLabel.innerText = "Role: Yuma";
+            directionsPanel.style.display = 'flex';
+            sidebar.style.display = 'flex'; // Show Level Buttons
+            workspace.classList.remove('tourist-mode');
+        }
+
+        drawMapGraphics();
+    }
+
+    function returnToSelection() {
+        ticketHelpMode = false;
+        document.getElementById('ticketControls').classList.remove('visible');
+        mainApp.style.display = 'none';
+        selectionScreen.style.display = 'flex';
+        currentRoute = null;
+        currentStepState = 'prompt';
+        goalReached = false;
+        updateTicketButtonState();
+        touristPin.x = nodes.nakajima.x;
+        touristPin.y = nodes.nakajima.y;
+    }
+
+    // Load the map image
+    const bgImage = new Image();
+    bgImage.src = 'ma.png'; 
+    bgImage.onload = () => { drawMapGraphics(); };
+    bgImage.onerror = () => {
+        console.error("Failed to load image 'ma.png'. Check file name and location.");
+        drawMapGraphics();
+    };
+
+    // Card Hotspot Regions on Canvas
+    const cardHotspots = {
+        market: { x: 10, y: 50, w: 226, h: 155 },
+        zoo:    { x: 10, y: 230, w: 226, h: 155 },
+        park:   { x: 668, y: 30, w: 222, h: 150 },
+        clock:  { x: 668, y: 228, w: 222, h: 150 }
+    };
+
+    // Station nodes
+    const nodes = {
+        nakajima: { x: 505, y: 360 }, 
+        odori: { x: 442, y: 213 },    
+        odoriToho: { x: 505, y: 213 },
+        sapporo: { x: 442, y: 153 },
+        maruyama: { x: 337, y: 213 },
+        nijuyonken: { x: 298, y: 153 },
+        kanjo: { x: 561, y: 83 }
+    };
+
+    // Densely populated tracking points for smooth dragging
+    const tracks = [
+        // --- Walkway & Namboku Line ---
+        { x: 505, y: 360 }, { x: 490, y: 345 }, { x: 475, y: 330 }, { x: 460, y: 315 },
+        { x: 442, y: 300 }, { x: 442, y: 285 }, { x: 442, y: 270 }, { x: 442, y: 255 }, 
+        { x: 442, y: 240 }, { x: 442, y: 225 }, { x: 442, y: 213 }, { x: 442, y: 198 }, 
+        { x: 442, y: 183 }, { x: 442, y: 168 }, { x: 442, y: 153 },
+        
+        // --- Tozai Line ---
+        { x: 425, y: 213 }, { x: 410, y: 213 }, { x: 395, y: 213 }, { x: 380, y: 213 }, 
+        { x: 365, y: 213 }, { x: 350, y: 213 }, { x: 337, y: 213 },
+        { x: 324, y: 195 }, { x: 311, y: 174 }, { x: 298, y: 153 },
+        { x: 456, y: 213 }, { x: 470, y: 213 }, { x: 484, y: 213 }, { x: 505, y: 213 },
+        { x: 515, y: 213 }, { x: 535, y: 213 },
+
+        // --- Toho Line (Updated Coordinates) ---
+        { x: 505, y: 198 }, { x: 505, y: 183 }, { x: 505, y: 168 }, { x: 505, y: 153 },
+        { x: 505, y: 135 }, { x: 505, y: 115 }, { x: 512, y: 106 }, { x: 528, y: 106 }, 
+        { x: 538, y: 106 }, { x: 561, y: 83 }
+    ];
+
+    let currentRoute = null;
+    let currentStepState = 'prompt'; 
+    let currentLevel = 1;
+    let isDragging = false;
+    let touristPin = { x: 505, y: 360, radius: 14 }; 
+
+    function selectDestination(routeKey) {
+        if (ticketHelpMode) exitTicketHelp();
+        currentRoute = routeKey;
+        currentStepState = 'prompt';
+        goalReached = false;
+        updateTicketButtonState();
+        touristPin.x = nodes.nakajima.x;
+        touristPin.y = nodes.nakajima.y;
+        
+        updateDirections();
+        drawMapGraphics();
+    }
+
+    function startTicketHelp() {
+        if (currentMode !== 'yuma' || !goalReached) return;
+        ticketHelpMode = true;
+        ticketLineIndex = 0;
+        document.getElementById('ticketControls').classList.add('visible');
+        document.getElementById('sidebar').querySelectorAll('.level-btn').forEach(btn => btn.style.display = 'none');
+        document.getElementById('ticketHelpButton').style.display = 'none';
+        roleLabel.innerText = 'Role: Yuma — Ticket Help';
+        renderTicketLine();
+    }
+
+    function renderTicketLine() {
+        const line = ticketDialogue[ticketLineIndex];
+        let displayText = line.text;
+        if (currentLevel === 1) {
+            displayText = 'Do you know how to <span class="highlight">________</span> a subway ticket?';
+        } else if (currentLevel === 2) {
+            displayText = 'Do you <span class="highlight">________</span> how to <span class="highlight">________</span> a subway <span class="highlight">________</span>?';
+        } else if (currentLevel === 3) {
+            displayText = '<span class="highlight">________</span> you <span class="highlight">________</span> how to <span class="highlight">________</span> a <span class="highlight">________</span> <span class="highlight">________</span>?';
+        }
+        directionsPanel.innerHTML = `<div>${displayText}</div>`;
+        document.getElementById('ticketBackButton').disabled = ticketLineIndex === 0;
+        document.getElementById('ticketBackButton').style.opacity = ticketLineIndex === 0 ? '0.45' : '1';
+        document.getElementById('ticketNextButton').textContent = '↻ Repeat line';
+    }
+
+    function nextTicketLine() {
+        if (!ticketHelpMode) return;
+        ticketLineIndex = 0;
+        renderTicketLine();
+    }
+
+    function previousTicketLine() {
+        if (!ticketHelpMode || ticketLineIndex === 0) return;
+        ticketLineIndex--;
+        renderTicketLine();
+    }
+
+    function exitTicketHelp() {
+        ticketHelpMode = false;
+        document.getElementById('ticketControls').classList.remove('visible');
+        document.getElementById('sidebar').querySelectorAll('.level-btn').forEach(btn => btn.style.display = '');
+        document.getElementById('ticketHelpButton').style.display = '';
+        updateTicketButtonState();
+        roleLabel.innerText = 'Role: Yuma';
+        updateDirections();
+    }
+
+    function setLevel(levelNum, buttonEl) {
+        currentLevel = levelNum;
+        document.querySelectorAll('.level-btn').forEach(btn => btn.classList.remove('active'));
+        buttonEl.classList.add('active');
+        if (ticketHelpMode) renderTicketLine();
+        else updateDirections();
+    }
+
+    function drawMapGraphics() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw background image
+        if (bgImage.complete && bgImage.naturalWidth !== 0) {
+            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("Error: 'ma.png' could not be loaded.", canvas.width/2, canvas.height/2 - 10);
+            ctx.fillStyle = '#4a5568';
+            ctx.font = '14px sans-serif';
+            ctx.fillText("Please ensure 'ma.png' is in the same folder as this HTML file.", canvas.width/2, canvas.height/2 + 20);
+        }
+
+        // Highlight selected picture card box
+        if (currentRoute && cardHotspots[currentRoute]) {
+            const hs = cardHotspots[currentRoute];
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(hs.x, hs.y, hs.w, hs.h);
+        }
+
+        // Pulse ring at starting position
+        ctx.beginPath(); 
+        ctx.arc(nodes.nakajima.x, nodes.nakajima.y, 22, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ef4444'; 
+        ctx.lineWidth = 2; 
+        ctx.stroke();
+
+        // Draggable player pin
+        ctx.beginPath(); 
+        ctx.arc(touristPin.x, touristPin.y, touristPin.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef4444'; 
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff'; 
+        ctx.lineWidth = 3; 
+        ctx.stroke();
+    }
+
+    function getCanvasPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
+        };
+    }
+
+    function checkPictureCardClick(pos) {
+        for (const [routeKey, hs] of Object.entries(cardHotspots)) {
+            if (pos.x >= hs.x && pos.x <= hs.x + hs.w &&
+                pos.y >= hs.y && pos.y <= hs.y + hs.h) {
+                selectDestination(routeKey);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function snapToClosestTrack(mouseX, mouseY) {
+        let closestNode = tracks[0];
+        let minDistance = Infinity;
+
+        tracks.forEach(node => {
+            if (currentRoute === 'zoo') {
+                if (node.y < 213) return; 
+                if (node.x < nodes.maruyama.x) return;
+            }
+            if (currentRoute === 'clock') {
+                if (node.y < 213 || (node.x !== 442 && node.x !== 505)) return; 
+            }
+            if (currentRoute === 'market') {
+                if (node.y < 213 && (node.x === 442 || node.x === 505)) return; 
+                if (node.x < nodes.nijuyonken.x) return;
+            }
+            if (currentRoute === 'park') {
+                if (node.x < 442 && node.x !== 505) return; 
+            }
+
+            let dist = Math.hypot(mouseX - node.x, mouseY - node.y);
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestNode = node;
+            }
+        });
+
+        if (minDistance < 60) {
+            touristPin.x = closestNode.x;
+            touristPin.y = closestNode.y;
+            evaluateLegProgression(closestNode.x, closestNode.y);
+        }
+    }
+
+    function evaluateLegProgression(x, y) {
+        if (!currentRoute) return;
+
+        const isAtStartNode = (x === nodes.nakajima.x && y === nodes.nakajima.y);
+        const distToOdoriNamboku = Math.hypot(x - nodes.odori.x, y - nodes.odori.y);
+        const distToOdoriToho = Math.hypot(x - nodes.odoriToho.x, y - nodes.odoriToho.y);
+
+        if (currentRoute === 'clock') {
+            if (isAtStartNode) currentStepState = 'prompt';
+            else if (y > 213 && y < 360) currentStepState = 'leg1_midway';
+            else if (distToOdoriNamboku < 15 || (x === 442 && y === 213)) currentStepState = 'leg1_arrival';
+            if (checkGoalReached(x, y)) { goalReached = true; updateTicketButtonState(); }
+            updateDirections();
+            return;
+        }
+
+        if (currentRoute === 'zoo' || currentRoute === 'market') {
+            if (isAtStartNode) {
+                currentStepState = 'prompt';
+            } else if (y > 213 && y < 360) {
+                currentStepState = 'leg1_midway';
+            } else if (x === 442 && y === 213) {
+                currentStepState = 'leg1_arrival';
+            } else if (x < 442) {
+                const distToMaruyama = Math.hypot(x - nodes.maruyama.x, y - nodes.maruyama.y);
+                const distToNijuyonken = Math.hypot(x - nodes.nijuyonken.x, y - nodes.nijuyonken.y);
+
+                if (currentRoute === 'zoo') {
+                    if (distToMaruyama < 15) currentStepState = 'leg2_arrival';
+                    else currentStepState = 'leg2_midway';
+                } else if (currentRoute === 'market') {
+                    if (distToNijuyonken < 25) currentStepState = 'leg2_arrival';
+                    else currentStepState = 'leg2_midway';
+                }
+            }
+        } 
+        else if (currentRoute === 'park') {
+            if (isAtStartNode) {
+                currentStepState = 'prompt';
+            } 
+            else if (y > 213 && (x === 442 || x === 505)) {
+                currentStepState = 'leg1_midway';
+            } 
+            else if (x === 442 && y === 213) {
+                currentStepState = 'leg1_arrival';
+            } 
+            else if (y === 213 && x > 442 && x < 505) {
+                currentStepState = 'leg2_change';
+            } 
+            else if (distToOdoriToho < 15 || (x === 505 && y === 213)) {
+                currentStepState = 'leg2_toho_start';
+            } 
+            else if (x === 505 && y < 213 && y > 83) {
+                currentStepState = 'leg2_midway';
+            } 
+            else if (x === 561 && y === 83) {
+                currentStepState = 'leg2_arrival';
+            }
+        }
+
+        if (checkGoalReached(x, y)) {
+            goalReached = true;
+            updateTicketButtonState();
+        }
+        updateDirections();
+    }
+
+    function updateDirections() {
+        if (ticketHelpMode) return;
+        if (!currentRoute) {
+            directionsPanel.innerHTML = `<div class="placeholder">地図上の絵カードをクリックし、赤い点を地下鉄の路線に沿ってドラッグしてください。</div>`;
+            return;
+        }
+
+        let outputText = "";
+
+        if (currentRoute === 'zoo') {
+            switch(currentStepState) {
+                case 'prompt': outputText = "開始するには、線に沿ってカーソルを動かしてください。"; break;
+                case 'leg1_midway': 
+                    if (currentLevel === 1) outputText = "Take the&nbsp;<span class='highlight'>subway</span>...";
+                    else if (currentLevel === 2) outputText = "Take the&nbsp;<span class='highlight'>________</span>...";
+                    else outputText = "<span class='highlight'>________</span>&nbsp;the&nbsp;<span class='highlight'>________</span>...";
+                    break;
+                case 'leg1_arrival': 
+                    if (currentLevel === 1) outputText = "...and get off at&nbsp;<span class='highlight'>Odori Station</span>.";
+                    else if (currentLevel === 2) outputText = "...and get off at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    else outputText = "...and&nbsp;<span class='highlight'>________</span>&nbsp;at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    break;
+                case 'leg2_midway': 
+                    if (currentLevel === 1) outputText = "Then, change to the&nbsp;<span class='highlight'>Tozai Line</span>...";
+                    else if (currentLevel === 2) outputText = "Then, change to the&nbsp;<span class='highlight'>________</span>&nbsp;Line...";
+                    else outputText = "Then,&nbsp;<span class='highlight'>________</span>&nbsp;to the&nbsp;<span class='highlight'>________</span>&nbsp;Line...";
+                    break;
+                case 'leg2_arrival': 
+                    if (currentLevel === 1) outputText = "...and get off at&nbsp;<span class='highlight'>Maruyama Koen Station</span>.";
+                    else if (currentLevel === 2) outputText = "...and get off at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    else outputText = "...and&nbsp;<span class='highlight'>________</span>&nbsp;at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    break;
+            }
+        } 
+        else if (currentRoute === 'market') {
+            switch(currentStepState) {
+                case 'prompt': outputText = "開始するには、線に沿ってカーソルを動かしてください。"; break;
+                case 'leg1_midway': 
+                    if (currentLevel === 1) outputText = "Take the&nbsp;<span class='highlight'>subway</span>...";
+                    else if (currentLevel === 2) outputText = "Take the&nbsp;<span class='highlight'>________</span>...";
+                    else outputText = "<span class='highlight'>________</span>&nbsp;the&nbsp;<span class='highlight'>________</span>...";
+                    break;
+                case 'leg1_arrival': 
+                    if (currentLevel === 1) outputText = "...and get off at&nbsp;<span class='highlight'>Odori Station</span>.";
+                    else if (currentLevel === 2) outputText = "...and get off at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    else outputText = "...and&nbsp;<span class='highlight'>________</span>&nbsp;at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    break;
+                case 'leg2_midway': 
+                    if (currentLevel === 1) outputText = "Then, change to the&nbsp;<span class='highlight'>Tozai Line</span>...";
+                    else if (currentLevel === 2) outputText = "Then, change to the&nbsp;<span class='highlight'>________</span>&nbsp;Line...";
+                    else outputText = "Then,&nbsp;<span class='highlight'>________</span>&nbsp;to the&nbsp;<span class='highlight'>________</span>&nbsp;Line...";
+                    break;
+                case 'leg2_arrival': 
+                    if (currentLevel === 1) outputText = "...and get off at&nbsp;<span class='highlight'>Nijuyonken Station</span>.";
+                    else if (currentLevel === 2) outputText = "...and get off at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    else outputText = "...and&nbsp;<span class='highlight'>________</span>&nbsp;at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    break;
+            }
+        } 
+        else if (currentRoute === 'clock') {
+            switch(currentStepState) {
+                case 'prompt': outputText = "開始するには、線に沿ってカーソルを動かしてください。"; break;
+                case 'leg1_midway': 
+                    if (currentLevel === 1) outputText = "Take the&nbsp;<span class='highlight'>subway</span>...";
+                    else if (currentLevel === 2) outputText = "Take the&nbsp;<span class='highlight'>________</span>...";
+                    else outputText = "<span class='highlight'>________</span>&nbsp;the&nbsp;<span class='highlight'>________</span>...";
+                    break;
+                case 'leg1_arrival': 
+                    if (currentLevel === 1) outputText = "...and get off at&nbsp;<span class='highlight'>Odori Station</span>. It's near here!";
+                    else if (currentLevel === 2) outputText = "...and get off at&nbsp;<span class='highlight'>________</span>&nbsp;Station. It's near here!";
+                    else outputText = "...and&nbsp;<span class='highlight'>________</span>&nbsp;at&nbsp;<span class='highlight'>________</span>&nbsp;Station. It's near here!";
+                    break;
+            }
+        } 
+        else if (currentRoute === 'park') {
+            switch(currentStepState) {
+                case 'prompt': 
+                    outputText = "開始するには、線に沿ってカーソルを動かしてください。"; 
+                    break;
+                case 'leg1_midway': 
+                    if (currentLevel === 1) outputText = "Take the&nbsp;<span class='highlight'>subway</span>...";
+                    else if (currentLevel === 2) outputText = "Take the&nbsp;<span class='highlight'>________</span>...";
+                    else outputText = "<span class='highlight'>________</span>&nbsp;the&nbsp;<span class='highlight'>________</span>...";
+                    break;
+                case 'leg1_arrival': 
+                    if (currentLevel === 1) outputText = "...and get off at&nbsp;<span class='highlight'>Odori Station</span>.";
+                    else if (currentLevel === 2) outputText = "...and get off at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    else outputText = "...and&nbsp;<span class='highlight'>________</span>&nbsp;at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    break;
+                case 'leg2_change': 
+                case 'leg2_toho_start': 
+                    if (currentLevel === 1) outputText = "Then, change to the&nbsp;<span class='highlight'>Toho Line</span>...";
+                    else if (currentLevel === 2) outputText = "Then, change to the&nbsp;<span class='highlight'>________</span>&nbsp;Line...";
+                    else outputText = "Then,&nbsp;<span class='highlight'>________</span>&nbsp;to the&nbsp;<span class='highlight'>________</span>&nbsp;Line...";
+                    break;
+                case 'leg2_midway': 
+                    if (currentLevel === 1) outputText = "...and get off at&nbsp;<span class='highlight'>Kanjo Dori Higashi Station</span>.";
+                    else if (currentLevel === 2) outputText = "...and get off at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    else outputText = "...and&nbsp;<span class='highlight'>________</span>&nbsp;at&nbsp;<span class='highlight'>________</span>&nbsp;Station.";
+                    break;
+                case 'leg2_arrival': 
+                    if (currentLevel === 1) outputText = "It takes&nbsp;<span class='highlight'>25 minutes by bus</span>&nbsp;to Moerenuma Park.";
+                    else if (currentLevel === 2) outputText = "It takes&nbsp;<span class='highlight'>________</span>&nbsp;by bus to Moerenuma Park.";
+                    else outputText = "It takes&nbsp;<span class='highlight'>________</span>&nbsp;to Moerenuma Park.";
+                    break;
+            }
+        }
+
+        directionsPanel.innerHTML = outputText;
+    }
+
+    // Mouse Event Handlers
+    canvas.addEventListener('mousedown', (e) => {
+        const pos = getCanvasPos(e);
+        if (checkPictureCardClick(pos)) return;
+        if (currentRoute && Math.hypot(pos.x - touristPin.x, pos.y - touristPin.y) < touristPin.radius + 15) {
+            isDragging = true;
+        }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        const pos = getCanvasPos(e);
+
+        let hoveringCard = false;
+        for (const hs of Object.values(cardHotspots)) {
+            if (pos.x >= hs.x && pos.x <= hs.x + hs.w && pos.y >= hs.y && pos.y <= hs.y + hs.h) {
+                hoveringCard = true;
+                break;
+            }
+        }
+        let hoveringPin = currentRoute && Math.hypot(pos.x - touristPin.x, pos.y - touristPin.y) < touristPin.radius + 15;
+        
+        if (hoveringCard || hoveringPin) {
+            canvas.style.cursor = isDragging ? 'grabbing' : 'pointer';
+        } else {
+            canvas.style.cursor = 'default';
+        }
+
+        if (!isDragging) return;
+        snapToClosestTrack(pos.x, pos.y);
+        drawMapGraphics();
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Touch Event Support
+    canvas.addEventListener('touchstart', (e) => {
+        const pos = getCanvasPos(e.touches[0]);
+        if (checkPictureCardClick(pos)) return;
+        if (currentRoute && Math.hypot(pos.x - touristPin.x, pos.y - touristPin.y) < touristPin.radius + 20) {
+            isDragging = true;
+        }
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (!isDragging) return; 
+        e.preventDefault();
+        const pos = getCanvasPos(e.touches[0]);
+        snapToClosestTrack(pos.x, pos.y);
+        drawMapGraphics();
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => { isDragging = false; });
+</script>
+
+</body>
+</html>
